@@ -49,6 +49,46 @@
  */
 #define SYLAR_LOG_FATAL(logger) SYLAR_LOG_LEVEL(logger, sylar::LogLevel::FATAL)
 
+/**
+ * @brief 使用格式化方式将日志级别level的日志写入到logger
+ */
+#define SYLAR_LOG_FMT_LEVEL(logger, level, fmt, ...) \
+    if(logger->getLevel() <= level) \
+        sylar::LogEventWrap(sylar::LogEvent::ptr(new sylar::LogEvent(logger, level, \
+                        __FILE__, __LINE__, 0, sylar::GetThreadId(),\
+                sylar::GetFiberId(), time(0), sylar::Thread::GetName()))).getEvent()->format(fmt, __VA_ARGS__)
+
+/**
+ * @brief 使用格式化方式将日志级别debug的日志写入到logger
+ */
+#define SYLAR_LOG_FMT_DEBUG(logger, fmt, ...) SYLAR_LOG_FMT_LEVEL(logger, sylar::LogLevel::DEBUG, fmt, __VA_ARGS__)
+
+/**
+ * @brief 使用格式化方式将日志级别info的日志写入到logger
+ */
+#define SYLAR_LOG_FMT_INFO(logger, fmt, ...)  SYLAR_LOG_FMT_LEVEL(logger, sylar::LogLevel::INFO, fmt, __VA_ARGS__)
+
+/**
+ * @brief 使用格式化方式将日志级别warn的日志写入到logger
+ */
+#define SYLAR_LOG_FMT_WARN(logger, fmt, ...)  SYLAR_LOG_FMT_LEVEL(logger, sylar::LogLevel::WARN, fmt, __VA_ARGS__)
+
+/**
+ * @brief 使用格式化方式将日志级别error的日志写入到logger
+ */
+#define SYLAR_LOG_FMT_ERROR(logger, fmt, ...) SYLAR_LOG_FMT_LEVEL(logger, sylar::LogLevel::ERROR, fmt, __VA_ARGS__)
+
+/**
+ * @brief 使用格式化方式将日志级别fatal的日志写入到logger
+ */
+#define SYLAR_LOG_FMT_FATAL(logger, fmt, ...) SYLAR_LOG_FMT_LEVEL(logger, sylar::LogLevel::FATAL, fmt, __VA_ARGS__)
+
+// 获取主日志器
+#define SYLAR_LOG_ROOT() sylar::LoggerMgr::GetInstance()->getRoot()
+
+// 获取name的日志器
+#define SYLAR_LOG_NAME(name) sylar::LoggerMgr::GetInstance()->getLogger(name)
+
 namespace sylar {
     class Logger;
 
@@ -67,7 +107,12 @@ namespace sylar {
             FATAL = 5,
         };
 
+        // 将日志级别转换成文本输出
         static const char* ToString(LogLevel::Level level);
+
+        // 将文本转化成日志级别
+        static LogLevel::Level FromString(const std::string& str);
+
     };
 
     // 日志事件的封装
@@ -166,6 +211,13 @@ namespace sylar {
         };
 
         void init();    // 初始化, 进行日志格式解析
+
+        /**
+         * @brief 是否有错误
+         */
+        bool isError() const { return m_error;}
+
+        std::string getPattern() { return m_pattern; }
     private:
         std::string m_pattern;              // 日志格式模版
         std::vector<FormatItem::ptr> m_items;    // 日志格式解析后格式
@@ -174,6 +226,7 @@ namespace sylar {
 
     // 日志输出目标
     class LogAppender {
+    friend class Logger;
     public:
         typedef std::shared_ptr<LogAppender> ptr;
         virtual ~LogAppender() {}
@@ -183,6 +236,14 @@ namespace sylar {
 
         void setFormatter(LogFormatter::ptr val) {
             m_formatter = val;
+            if (m_formatter)
+            {
+                m_hasFormatter = true;
+            }
+            else
+            {
+                m_hasFormatter = false;
+            }
         }
         LogFormatter::ptr getFormatter() const {
             return m_formatter;
@@ -190,8 +251,14 @@ namespace sylar {
 
         LogLevel::Level getLevel() const { return m_level; }
         void setLevel(LogLevel::Level val) { m_level = val; }
+
+        /**
+         * @brief 将日志输出目标的配置转成YAML String
+         */
+        virtual std::string toYamlString() = 0;
     protected:
         LogLevel::Level m_level = LogLevel::DEBUG;
+        bool m_hasFormatter = false;    // 是否有自己的日志格式器
         LogFormatter::ptr m_formatter;  // 日志格式器
     };
 
@@ -213,6 +280,7 @@ class Logger : public std::enable_shared_from_this<Logger>{
 
         void addAppender(LogAppender::ptr appender);
         void delAppender(LogAppender::ptr appender);
+        void clearAppenders();
         LogLevel::Level getLevel() const
         {
             return m_level;
@@ -224,6 +292,22 @@ class Logger : public std::enable_shared_from_this<Logger>{
         const std::string& getName() const {
             return m_name;
         }
+
+        void setFormatter(LogFormatter::ptr val);
+
+        void setFormatter(const std::string& val);
+
+        LogFormatter::ptr getFormatter();
+
+        /**
+         * @brief 将日志器的配置转成YAML String
+         */
+        std::string toYamlString();
+
+        /**
+         * @brief 返回主日志器
+         */
+        Logger::ptr getRoot() const { return m_root;}
 
     private:
         std::string m_name;                         // 日志名称
@@ -238,6 +322,7 @@ class Logger : public std::enable_shared_from_this<Logger>{
     public:
         typedef std::shared_ptr<StdoutLogAppender> ptr;
         void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) override;
+        std::string toYamlString() override;
     };
 
     // 定义输出到文件Appender
@@ -246,6 +331,7 @@ class Logger : public std::enable_shared_from_this<Logger>{
         typedef std::shared_ptr<FileLogAppender> ptr;
         FileLogAppender(const std::string& filename);
         void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) override;
+        std::string toYamlString() override;
 
         // 重新打开日志文件
         bool reopen();
@@ -263,9 +349,19 @@ class Logger : public std::enable_shared_from_this<Logger>{
         Logger::ptr getLogger(const std::string& name);
         // 初始化
         void init();
+
+        /**
+         * @brief 返回主日志器
+         */
+        Logger::ptr getRoot() const { return m_root;}
+
+        /**
+         * @brief 将所有的日志器配置转成YAML String
+         */
+        std::string toYamlString();
     private:
         std::map<std::string, Logger::ptr> m_loggers;   // 日志器容器
-        Logger::ptr m_root; // 主日志器
+        Logger::ptr m_root; // 主日志器 构造时进行初始化
     };
 
     // 日志管理类单例模式

@@ -4,4 +4,7 @@ project(MySylar)
 set(CMAKE_CXX_STANDARD 14)
 
 add_executable(test_log test_log.cpp)
-target_link_libraries(test_log Mylib)
+add_executable(test_config test_config.cpp)
+
+target_link_libraries(test_log sylar)
+target_link_libraries(test_config sylar yaml-cpp)

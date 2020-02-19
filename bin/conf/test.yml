@@ -1,0 +1,38 @@
+system:
+  port: 9900
+  value: 15
+  int_vec: [1, 10]
+  int_list: [20, 30, 40]
+  int_set: [50, 60, 70]
+  int_uset: [80, 90, 100]
+  str_int_map:
+    k: 110
+    k2: 120
+    k3: 130
+  str_int_umap:
+    k: 140
+    k2: 150
+    k3: 160
+class:
+  person:
+    name: hello
+    age: 20
+    sex: false
+  map:
+    sylar1:
+      name: sylar01
+      age: 18
+      sex: false
+    sylar2:
+      name: sylar02
+      age: 19
+      sex: true
+  vec_map:
+    k1:
+      - name: sylar01
+        age: 18
+        sex: false
+    k2:
+      - name: sylar01
+        age: 18
+        sex: false

@@ -7,6 +7,7 @@
 
 #include <sys/types.h>
 #include <cstdint>
+#include <cxxabi.h>
 
 namespace sylar {
 
@@ -20,6 +21,11 @@ namespace sylar {
      * @brief 返回当前协程的ID
     */
     uint32_t GetFiberId();
+
+    template<class T>
+    const char* TypeToName() {
+        static const char* s_name = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, nullptr);
+    }
 };
 
 
