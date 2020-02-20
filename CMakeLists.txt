@@ -12,9 +12,17 @@ set(LIB_SRC
         util.h
         singleton.h
         config.cpp
-        config.h)
+        config.h
+        thread.cpp
+        thread.h
+        mutex.cpp
+        mutex.h
+        sylar.h)
+
 
 add_library(sylar ${LIB_SRC})
+
+target_link_libraries(sylar pthread)
 
 
 add_executable(MySylar main.cpp)

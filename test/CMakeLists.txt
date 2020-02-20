@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 14)
 
 add_executable(test_log test_log.cpp)
 add_executable(test_config test_config.cpp)
+add_executable(test_thread test_thread.cpp)
 
-target_link_libraries(test_log sylar)
+target_link_libraries(test_log sylar yaml-cpp)
 target_link_libraries(test_config sylar yaml-cpp)
+target_link_libraries(test_thread sylar yaml-cpp pthread)

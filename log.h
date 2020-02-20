@@ -15,6 +15,7 @@
 #include <map>
 #include "util.h"
 #include "singleton.h"
+#include "mutex.h"
 
 // 使用流式方式将日志级别level的日志写入到logger
 // 如果当前logger的日志级别小于参数level，那么重新创建一个LogEvent，并用LogEventWrap包装
@@ -194,6 +195,8 @@ namespace sylar {
     class LogFormatter {
     public:
         typedef std::shared_ptr<LogFormatter> ptr;
+        typedef Spinlock MutexType;
+
         LogFormatter(const std::string& pattern);
 
         // 将LogEvent格式化为字符串
@@ -204,6 +207,7 @@ namespace sylar {
         class FormatItem {
         public:
             typedef std::shared_ptr<FormatItem> ptr;
+
             FormatItem(const std::string& fmt = "") {};
             virtual ~FormatItem() {}
             // 格式化日志到流
@@ -219,6 +223,7 @@ namespace sylar {
 
         std::string getPattern() { return m_pattern; }
     private:
+        MutexType m_mutex;
         std::string m_pattern;              // 日志格式模版
         std::vector<FormatItem::ptr> m_items;    // 日志格式解析后格式
         bool m_error = false;               // 是否有错误
@@ -229,12 +234,15 @@ namespace sylar {
     friend class Logger;
     public:
         typedef std::shared_ptr<LogAppender> ptr;
+        typedef Spinlock MutexType;
+
         virtual ~LogAppender() {}
 
         // 将日志输出到对应的落地点
         virtual void log(std::shared_ptr<Logger> loger, LogLevel::Level level, LogEvent::ptr event) = 0;   // 纯虚函数
 
         void setFormatter(LogFormatter::ptr val) {
+            MutexType::Lock lock(m_mutex);
             m_formatter = val;
             if (m_formatter)
             {
@@ -245,7 +253,9 @@ namespace sylar {
                 m_hasFormatter = false;
             }
         }
-        LogFormatter::ptr getFormatter() const {
+
+        LogFormatter::ptr getFormatter() {
+            MutexType::Lock lock(m_mutex);
             return m_formatter;
         }
 
@@ -257,6 +267,7 @@ namespace sylar {
          */
         virtual std::string toYamlString() = 0;
     protected:
+        MutexType m_mutex;
         LogLevel::Level m_level = LogLevel::DEBUG;
         bool m_hasFormatter = false;    // 是否有自己的日志格式器
         LogFormatter::ptr m_formatter;  // 日志格式器
@@ -267,6 +278,7 @@ class Logger : public std::enable_shared_from_this<Logger>{
     friend class LoggerManager;
     public:
         typedef std::shared_ptr<Logger> ptr;
+        typedef Spinlock MutexType;
 
         Logger(const std::string& name = "root");
         // 写入日志，指定日志级别
@@ -315,6 +327,7 @@ class Logger : public std::enable_shared_from_this<Logger>{
         std::list<LogAppender::ptr> m_appenders;    // Appender集合
         LogFormatter::ptr m_formatter;              // 日志格式器
         Logger::ptr m_root;                         // 主日志器
+        MutexType m_mutex;
     };
 
     // 输出到控制台的Appender
@@ -344,6 +357,7 @@ class Logger : public std::enable_shared_from_this<Logger>{
     class LoggerManager
     {
     public:
+        typedef Spinlock MutexType;
         LoggerManager();
 
         Logger::ptr getLogger(const std::string& name);
@@ -360,6 +374,7 @@ class Logger : public std::enable_shared_from_this<Logger>{
          */
         std::string toYamlString();
     private:
+        MutexType m_mutex;
         std::map<std::string, Logger::ptr> m_loggers;   // 日志器容器
         Logger::ptr m_root; // 主日志器 构造时进行初始化
     };

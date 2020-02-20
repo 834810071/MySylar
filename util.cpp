@@ -11,7 +11,7 @@ namespace sylar {
 
     pid_t GetThreadId()
     {
-        return syscall(SYS_gettid);
+        return syscall(SYS_gettid); // 获取线程id唯一标识
     }
 
     uint32_t GetFiberId()
