@@ -17,7 +17,12 @@ set(LIB_SRC
         thread.h
         mutex.cpp
         mutex.h
-        sylar.h)
+        sylar.h
+        macro.h
+        fiber.cpp
+        fiber.h
+        scheduler.cpp
+        scheduler.h)
 
 
 add_library(sylar ${LIB_SRC})

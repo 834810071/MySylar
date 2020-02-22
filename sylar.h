@@ -11,5 +11,8 @@
 #include "config.h"
 #include "thread.h"
 #include "mutex.h"
+#include "macro.h"
+#include "fiber.h"
+#include "scheduler.h"
 
 #endif //MYSYLAR_SYLAR_H

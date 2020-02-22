@@ -62,6 +62,16 @@ namespace sylar
         return t_thread_name;
     }
 
+    void Thread::SetName(const std::string& name) {
+        if(name.empty()) {
+            return;
+        }
+        if(t_thread) {
+            t_thread->m_name = name;
+        }
+        t_thread_name = name;
+    }
+
     void* Thread::run(void* arg)
     {
         Thread* thread = (Thread*)arg;
@@ -73,7 +83,7 @@ namespace sylar
         std::function<void()> cb;
         cb.swap(thread->m_cb);
 
-        thread->m_semaphore.notify();   // v操作
+        thread->m_semaphore.notify();   // v操作  保证上面操作能够顺利完成 通过信号量告诉主线程操作完成
 
         cb();
         return 0;

@@ -30,6 +30,12 @@ namespace sylar
 
         static Thread* GetThis();
         static const std::string& GetName();
+        /**
+         * @brief 设置当前线程名称
+         * @param[in] name 线程名称
+         */
+        static void SetName(const std::string& name);
+
 
     private:
         Thread(const Thread&) = delete;

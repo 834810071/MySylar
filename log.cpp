@@ -437,8 +437,17 @@ namespace sylar {
     void FileLogAppender::log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) {
         if (level >= m_level)
         {
+            uint64_t now = event->getTime();
+            if(now >= (m_lastTime + 3)) {   // 考虑到日志输出过程中日志文件被删除的情况
+                reopen();
+                m_lastTime = now;
+            }
+
             MutexType::Lock lock(m_mutex);
-            m_filestream << m_formatter->format(logger, level, event);  // 调用日志格式器输出日志
+            //m_filestream << m_formatter->format(logger, level, event);  // 调用日志格式器输出日志
+            if(!m_formatter->format(m_filestream, logger, level, event)) {
+                std::cout << "error" << std::endl;
+            }
         }
     }
 
@@ -482,6 +491,16 @@ namespace sylar {
         }
         return ss.str();
     }
+
+    std::ostream& LogFormatter::format(std::ostream& ofs, std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event)
+    {
+        for (auto& i : m_items)
+        {
+            i->format(ofs, logger, level, event);
+        }
+        return ofs;
+    }
+
 
     // %xxx %xxx{xxx} %%
     void LogFormatter::init() {

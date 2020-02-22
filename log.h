@@ -16,6 +16,7 @@
 #include "util.h"
 #include "singleton.h"
 #include "mutex.h"
+#include "thread.h"
 
 // 使用流式方式将日志级别level的日志写入到logger
 // 如果当前logger的日志级别小于参数level，那么重新创建一个LogEvent，并用LogEventWrap包装
@@ -23,7 +24,7 @@
     if (logger->getLevel() <= level) \
         sylar::LogEventWrap(sylar::LogEvent::ptr(new sylar::LogEvent(logger, level, \
                 __FILE__, __LINE__, 0, sylar::GetThreadId(),\
-                sylar::GetFiberId(), time(0)))).getSS()
+                sylar::GetFiberId(), time(0), sylar::Thread::GetName()))).getSS()
 
 /**
  * @brief 使用流式方式将日志级别debug的日志写入到logger
@@ -57,7 +58,7 @@
     if(logger->getLevel() <= level) \
         sylar::LogEventWrap(sylar::LogEvent::ptr(new sylar::LogEvent(logger, level, \
                         __FILE__, __LINE__, 0, sylar::GetThreadId(),\
-                sylar::GetFiberId(), time(0), sylar::Thread::GetName()))).getEvent()->format(fmt, __VA_ARGS__)
+                sylar::GetFiberId(), time(0), sylar::Thread::GetName(), sylar::Thread::GetName()))).getEvent()->format(fmt, __VA_ARGS__)
 
 /**
  * @brief 使用格式化方式将日志级别debug的日志写入到logger
@@ -201,6 +202,7 @@ namespace sylar {
 
         // 将LogEvent格式化为字符串
         std::string format(std::shared_ptr<Logger> loger, LogLevel::Level level, LogEvent::ptr event);
+        std::ostream& format(std::ostream& ofs, std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event);
 
     public:
         // 具体日志内容项格式化
@@ -211,7 +213,7 @@ namespace sylar {
             FormatItem(const std::string& fmt = "") {};
             virtual ~FormatItem() {}
             // 格式化日志到流
-            virtual void format(std::ostream& os, std::shared_ptr<Logger> loger, LogLevel::Level level, LogEvent::ptr event) = 0;
+            virtual void format(std::ostream& os, std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0;
         };
 
         void init();    // 初始化, 进行日志格式解析
@@ -351,6 +353,7 @@ class Logger : public std::enable_shared_from_this<Logger>{
     private:
         std::string m_filename;     // 文件路径
         std::ofstream m_filestream;  // 文件流
+        uint64_t m_lastTime = 0;    // 上次重新打开的时间
     };
 
     // 日志管理类

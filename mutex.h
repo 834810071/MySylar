@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <cstdint>
 #include <pthread.h>
+#include <atomic>
 
 namespace sylar
 {
@@ -196,6 +197,35 @@ namespace sylar
         pthread_mutex_t m_mutex;
     };
 
+    /**
+     * @brief 空锁(用于调试)
+     */
+    class NullMutex {
+    public:
+        /// 局部锁
+        typedef ScopedLockImpl<NullMutex> Lock;
+
+        /**
+         * @brief 构造函数
+         */
+        NullMutex() {}
+
+        /**
+         * @brief 析构函数
+         */
+        ~NullMutex() {}
+
+        /**
+         * @brief 加锁
+         */
+        void lock() {}
+
+        /**
+         * @brief 解锁
+         */
+        void unlock() {}
+    };
+
     // 读写互斥量
     // https://www.cnblogs.com/x_wukong/p/5671537.html
     class RWMutex {
@@ -246,7 +276,42 @@ namespace sylar
         pthread_rwlock_t m_lock;
     };
 
-    // 自旋锁
+    /**
+     * @brief 空读写锁(用于调试)
+     */
+    class NullRWMutex {
+    public:
+        /// 局部读锁
+        typedef ReadScopedLockImpl<NullMutex> ReadLock;
+        /// 局部写锁
+        typedef WriteScopedLockImpl<NullMutex> WriteLock;
+
+        /**
+         * @brief 构造函数
+         */
+        NullRWMutex() {}
+        /**
+         * @brief 析构函数
+         */
+        ~NullRWMutex() {}
+
+        /**
+         * @brief 上读锁
+         */
+        void rdlock() {}
+
+        /**
+         * @brief 上写锁
+         */
+        void wrlock() {}
+        /**
+         * @brief 解锁
+         */
+        void unlock() {}
+    };
+
+    // 自旋锁  高效
+    // 当线程A想要获取一把自旋锁而该锁又被其它线程锁持有时，线程A会在一个循环中自旋以检测锁是不是已经可用了
     class Spinlock {
     public:
         typedef ScopedLockImpl<Spinlock> Lock;
@@ -268,6 +333,34 @@ namespace sylar
         }
     private:
         pthread_spinlock_t m_mutex;
+    };
+
+    // 原子锁
+    class CASLock {
+    public:
+        typedef ScopedLockImpl<CASLock> Lock;
+
+        CASLock() {
+            m_mutex.clear();    // 清除 std::atomic_flag 对象的标志位，即设置 atomic_flag 的值为 false
+        }
+
+        ~CASLock() {
+
+        }
+
+        void lock() {
+            // 检查std::atomic_flag标志,并返回 std::atomic_flag 的旧值
+            while (std::atomic_flag_test_and_set_explicit(&m_mutex, std::memory_order_acquire));
+        }
+
+        void unlock() {
+            // 原子地将flag设置成false（函数）
+            std::atomic_flag_clear_explicit(&m_mutex, std::memory_order_release);
+        }
+
+    private:
+        // 原子状态
+        volatile std::atomic_flag m_mutex;
     };
 };
 

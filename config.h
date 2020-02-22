@@ -292,6 +292,7 @@ namespace sylar{
                       class ToStr = LexicalCast<T, std::string> >
     class ConfigVar : public ConfigVarBase {
     public:
+        typedef RWMutex RWMutexType;
         typedef std::shared_ptr<ConfigVar> ptr;
         typedef std::function<void(const T& old_value, const T& new_value)> on_change_cb;
 
@@ -307,6 +308,7 @@ namespace sylar{
             try {
                 // ------ T类型 --> 字符串
                 //return boost::lexical_cast<std::string>(m_val);
+                RWMutexType::ReadLock lock(m_mutex);
                 return ToStr()(m_val);
             } catch (std::exception& e)
             {
@@ -333,20 +335,23 @@ namespace sylar{
 
         const T getValue()
         {
+            RWMutexType::ReadLock lock(m_mutex);
             return m_val;
         }
 
         void setValue(const T& v)
         {
-            if (v == m_val) // 自定类 == 重写
             {
-                return;
+                RWMutexType::ReadLock lock(m_mutex);
+                if (v == m_val) // 自定类 == 重写
+                {
+                    return;
+                }
+                for (auto &i : m_cbs) {
+                    i.second(m_val, v);
+                }
             }
-            for (auto& i : m_cbs)
-            {
-                i.second(m_val, v);
-            }
-
+            RWMutexType::WriteLock lock(m_mutex);
             m_val = v;
         }
 
@@ -363,7 +368,7 @@ namespace sylar{
          */
         uint64_t addListener(on_change_cb cb) {
             static uint64_t s_fun_id = 0;
-            // RWMutexType::WriteLock lock(m_mutex);
+            RWMutexType::WriteLock lock(m_mutex);
             ++s_fun_id;
             m_cbs[s_fun_id] = cb;
             return s_fun_id;
@@ -374,7 +379,7 @@ namespace sylar{
          * @param[in] key 回调函数的唯一id
          */
         void delListener(uint64_t key) {
-            //RWMutexType::WriteLock lock(m_mutex);
+            RWMutexType::WriteLock lock(m_mutex);
             m_cbs.erase(key);
         }
 
@@ -384,7 +389,7 @@ namespace sylar{
          * @return 如果存在返回对应的回调函数,否则返回nullptr
          */
         on_change_cb getListener(uint64_t key) {
-            //RWMutexType::ReadLock lock(m_mutex);
+            RWMutexType::ReadLock lock(m_mutex);
             auto it = m_cbs.find(key);
             return it == m_cbs.end() ? nullptr : it->second;
         }
@@ -393,10 +398,11 @@ namespace sylar{
          * @brief 清理所有的回调函数
          */
         void clearListener() {
-            //RWMutexType::WriteLock lock(m_mutex);
+            RWMutexType::WriteLock lock(m_mutex);
             m_cbs.clear();
         }
     private:
+        RWMutexType m_mutex;
         T m_val;
         //变更回调函数组, uint64_t key,要求唯一，一般可以用hash
         std::map<uint64_t, on_change_cb> m_cbs;
@@ -405,12 +411,14 @@ namespace sylar{
     // ConfigVar的管理类
     class Config {
     public:
+        typedef RWMutex RWMutexType;
         typedef std::unordered_map<std::string, ConfigVarBase::ptr> ConfigVarMap;
 
         template<class T>
         static typename ConfigVar<T>::ptr Lookup(const std::string& name,
                 const T& default_value, const std::string& description = "")
         {
+            RWMutexType::WriteLock lock(GetMutex());
             auto it = GetDatas().find(name);
             if (it != GetDatas().end())
             {
@@ -438,6 +446,21 @@ namespace sylar{
             GetDatas()[name] = v;
             return v;
         }
+        /**
+         * @brief 查找配置参数
+         * @param[in] name 配置参数名称
+         * @return 返回配置参数名为name的配置参数
+         */
+        template<class T>
+        static typename ConfigVar<T>::ptr Lookup(const std::string& name) {
+            RWMutexType::ReadLock lock(GetMutex());
+            auto it = GetDatas().find(name);
+            if(it == GetDatas().end()) {
+                return nullptr;
+            }
+            return std::dynamic_pointer_cast<ConfigVar<T> >(it->second);
+        }
+
 
         // 使用YAML::Node 初始化配置魔抗
         static void LoadFromYaml(const  YAML::Node& root);
@@ -447,12 +470,26 @@ namespace sylar{
          * @param[in] name 配置参数名称
          */
         static ConfigVarBase::ptr LookupBase(const std::string& name);
+
+        /**
+         * @brief 遍历配置模块里面所有配置项
+         * @param[in] cb 配置项回调函数
+         */
+        static void Visit(std::function<void(ConfigVarBase::ptr)> cb);
     private:
         // 返回所有的配置项
         static ConfigVarMap& GetDatas()
         {
             static ConfigVarMap s_datas;    // 数据存放处
             return s_datas;
+        }
+
+        /**
+         * @brief 配置项的RWMutex
+         */
+        static RWMutexType& GetMutex() {
+            static RWMutexType s_mutex;
+            return s_mutex;
         }
     };
 };
