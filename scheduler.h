@@ -5,8 +5,12 @@
 #ifndef MYSYLAR_SCHEDULER_H
 #define MYSYLAR_SCHEDULER_H
 
-#include "mutex.h"
-#include <string>
+#include "fiber.h"
+#include "thread.h"
+#include <list>
+#include <memory>
+#include <vector>
+#include <iostream>
 
 namespace sylar {
     /**
@@ -25,7 +29,7 @@ namespace sylar {
          * @param[in] use_caller 是否使用当前调用线程
          * @param[in] name 协程调度器名称
          */
-        Scheduler(size_t threads = 1, bool use_caller = true, std::string& name = "");
+        Scheduler(size_t threads = 1, bool use_caller = true, const std::string& name = "");
 
         ~Scheduler();
 
@@ -56,7 +60,7 @@ namespace sylar {
             bool need_tickle = false;
             {
                 MutexType::Lock lock(m_mutex);
-                need_tickle = sheduleNoLock(fc, thread);
+                need_tickle = scheduleNoLock(fc, thread);
             }
             if (need_tickle) {
                 tickle();
@@ -68,14 +72,14 @@ namespace sylar {
          * @param[in] begin 协程数组的开始
          * @param[in] end 协程数组的结束
          */
-        typedef <class InputIterator>
+        template <class InputIterator>
         void schedule(InputIterator begin, InputIterator end) {
             bool need_tickle = false;
             {
                 MutexType::Lock lock(m_mutex);
                 while (begin != end)
                 {
-                    need_tickle = sheduleNoLock(&*begin, -1) || need_trckle;
+                    need_tickle = sheduleNoLock(&*begin, -1) || need_tickle;
                     ++begin;
                 }
                 if (need_tickle)
@@ -95,7 +99,7 @@ namespace sylar {
          */
         void run();
         /**
-         * @brief 返回是否可以停止
+         * @brief 返回时否可以停止
          */
         virtual bool stopping();
 

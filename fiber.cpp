@@ -135,9 +135,9 @@ namespace sylar{
         SetThis(this);
         SYLAR_ASSERT(m_state != EXEC);
         m_state = EXEC;
-        // 函数保存当前的上下文到oucp所指向的数据结构，并且设置到ucp所指向的上下文 &Scheduler::GetMainFiber()->m_ctx
+        // 函数保存当前的上下文到oucp所指向的数据结构，并且设置到ucp所指向的上下文
         // 执行绑定的函数 MainFunc
-        if (swapcontext(&t_threadFiber->m_ctx, &m_ctx)) {
+        if (swapcontext(&Scheduler::GetMainFiber()->m_ctx, &m_ctx)) {
             SYLAR_ASSERT2(false, "swapcontext");
         }
         // SYLAR_LOG_INFO(g_logger) << t_threadFiber->getId();
@@ -145,9 +145,17 @@ namespace sylar{
 
     // 切换到后台执行
     void Fiber::swapOut(){
-        //SetThis(Scheduler::GetMainFiber());
-        SetThis(t_threadFiber.get());
-        if (swapcontext(&m_ctx, &t_threadFiber->m_ctx)) {
+        SetThis(Scheduler::GetMainFiber());
+        //SetThis(t_threadFiber.get());
+        if (swapcontext(&m_ctx, &Scheduler::GetMainFiber()->m_ctx)) {
+            SYLAR_ASSERT2(false, "swapcontext");
+        }
+    }
+
+    void Fiber::call() {
+        SetThis(this);
+        m_state = EXEC;
+        if (swapcontext(&t_threadFiber->m_ctx, &m_ctx)) {
             SYLAR_ASSERT2(false, "swapcontext");
         }
     }
@@ -230,6 +238,7 @@ namespace sylar{
                                       << sylar::BacktraceToString();
         }
 
+        // 去掉会存在内存泄露问题
         auto raw_ptr = cur.get();   // 子协程裸指针
         cur.reset();
         raw_ptr->swapOut(); // 切换到主协程执行
