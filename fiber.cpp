@@ -135,6 +135,10 @@ namespace sylar{
         SetThis(this);
         SYLAR_ASSERT(m_state != EXEC);
         m_state = EXEC;
+//        if (Scheduler::GetMainFiber()->m_ctx.uc_flags == m_ctx.uc_flags)
+//        {
+//            std::cout<< "swapIn true" << std::endl;
+//        }
         // 函数保存当前的上下文到oucp所指向的数据结构，并且设置到ucp所指向的上下文
         // 执行绑定的函数 MainFunc
         if (swapcontext(&Scheduler::GetMainFiber()->m_ctx, &m_ctx)) {
@@ -143,7 +147,7 @@ namespace sylar{
         // SYLAR_LOG_INFO(g_logger) << t_threadFiber->getId();
     }
 
-    // 切换到后台执行
+    // 切换到后台执行 true
     void Fiber::swapOut(){
         SetThis(Scheduler::GetMainFiber());
         //SetThis(t_threadFiber.get());
@@ -152,14 +156,20 @@ namespace sylar{
         }
     }
 
+
     void Fiber::call() {
         SetThis(this);
         m_state = EXEC;
+        if (t_threadFiber->m_ctx.uc_flags == m_ctx.uc_flags)
+        {
+            std::cout<< "call true" << std::endl;
+        }
         if (swapcontext(&t_threadFiber->m_ctx, &m_ctx)) {
             SYLAR_ASSERT2(false, "swapcontext");
         }
     }
 
+    // false
     void Fiber::back()
     {
         SetThis(t_threadFiber.get());
@@ -169,6 +179,7 @@ namespace sylar{
     }
 
     uint64_t Fiber::GetFiberId() {
+
         if(t_fiber) {
             return t_fiber->getId();
         }
@@ -195,6 +206,7 @@ namespace sylar{
 
     // 协程切换到后台,并且设置为Ready状态
     void Fiber::YieldToReady(){
+
         Fiber::ptr cur = GetThis();
         SYLAR_ASSERT(cur->m_state == EXEC);
         cur->m_state = READY;
@@ -214,7 +226,7 @@ namespace sylar{
         return s_fiber_count;
     }
 
-    // 协程执行函数 执行完返回到线程主协程
+    // 协程执行函数 执行完返回到线程主协程 true
     void Fiber::MainFunc(){
         Fiber::ptr cur = GetThis();
         SYLAR_ASSERT(cur);
@@ -246,6 +258,7 @@ namespace sylar{
         SYLAR_ASSERT2(false, "never reach fiber_id = " + std::to_string(raw_ptr->getId()));
     }
 
+    // false
     void Fiber::CallerMainFunc()
     {
         Fiber::ptr cur = GetThis();

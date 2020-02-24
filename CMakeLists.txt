@@ -22,7 +22,11 @@ set(LIB_SRC
         fiber.cpp
         fiber.h
         scheduler.cpp
-        scheduler.h)
+        scheduler.h
+        iomanager.cpp
+        iomanager.h
+        timer.cpp
+        timer.h)
 
 
 add_library(sylar ${LIB_SRC})

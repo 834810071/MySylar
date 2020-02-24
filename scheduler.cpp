@@ -12,8 +12,8 @@ namespace sylar {
 
     static sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");
 
-    static thread_local Scheduler* t_scheduler = nullptr;
-    static thread_local Fiber* t_scheduler_fiber = nullptr;
+    static thread_local Scheduler* t_scheduler = nullptr;   // 当前调度器
+    static thread_local Fiber* t_scheduler_fiber = nullptr; // 当前调度器对应的协程
 
     Scheduler::Scheduler(size_t threads, bool use_caller, const std::string& name)
         : m_name(name)
@@ -27,14 +27,14 @@ namespace sylar {
             --threads;
 
             SYLAR_ASSERT(GetThis() == nullptr);
-            t_scheduler = this;
+            t_scheduler = this; // 确定调度器
 
             // 创建子协程 (use_caller)
-            m_rootFiber.reset(new Fiber(std::bind(&Scheduler::run, this), 0, true));
+            m_rootFiber.reset(new Fiber(std::bind(&Scheduler::run, this), 0, true));    // 创建协程
             sylar::Thread::SetName(m_name);
 
             t_scheduler_fiber = m_rootFiber.get();
-            m_rootThread = sylar::GetThreadId();
+            m_rootThread = sylar::GetThreadId();    // 获取当前线程id
             m_threadIds.push_back(m_rootThread);
         } else {
             m_rootThread = -1;
@@ -105,7 +105,7 @@ namespace sylar {
         }
 
         //bool exit_on_this_fiber = false;
-        if(m_rootThread != -1) {    // 调度器线程
+        if(m_rootThread != -1) {    // 当前线程作为一个协程调度线程
             SYLAR_ASSERT(GetThis() == this);
         } else {
             SYLAR_ASSERT(GetThis() != this);
@@ -156,7 +156,7 @@ namespace sylar {
         SYLAR_LOG_DEBUG(g_logger) << m_name << " run";
         //set_hook_enable(true);
         setThis();  // 1. 设置当前调度器
-        // 如果线程id不等于主线程id, 则创建主协程
+        // 如果线程id不等于主线程id, 则创建主协程  说明是多线程 或者单线程 use_caller = true
         if (sylar::GetThreadId() != m_rootThread) {
             t_scheduler_fiber = Fiber::GetThis().get();
         }
@@ -271,6 +271,5 @@ namespace sylar {
             sylar::Fiber::YieldToHold();
         }
     }
-
 
 }
