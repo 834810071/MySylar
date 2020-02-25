@@ -281,9 +281,9 @@ namespace sylar {
 
     bool IOManager::stopping(uint64_t& timeout)
     {
-        //timeout = getNextTimer(); timeout == ~0ull
-        //               &&
-        return  m_pendingEventCount == 0  // 剩余需要处理的消息为0
+        timeout = getNextTimer(); // 获取下次执行的定时器任务
+        return  timeout == ~0ull    // 无穷大
+               && m_pendingEventCount == 0  // 剩余需要处理的消息为0
                && Scheduler::stopping();
     }
 
@@ -326,9 +326,9 @@ namespace sylar {
             } while (true);
 
             std::vector<std::function<void()> > cbs;
-            //listExpiredCb(cbs);
+            listExpiredCb(cbs); // 获取超时任务
             if (!cbs.empty()) {
-                schedule(cbs.begin(), cbs.end());
+                schedule(cbs.begin(), cbs.end());   // 函数添加到调度器中
                 cbs.clear();
             }
 
@@ -391,8 +391,8 @@ namespace sylar {
         }
     }
 
-//    void IOManager::onTimerInsertedAtFront() {
-//        tickle();
-//    }
+    void IOManager::onTimerInsertedAtFront() {
+        tickle();
+    }
 
 }

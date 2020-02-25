@@ -7,6 +7,7 @@
 
 #include "scheduler.h"
 #include "mutex.h"
+#include "timer.h"
 #include <functional>
 #include <vector>
 #include <atomic>
@@ -14,7 +15,7 @@
 namespace sylar {
 
     // 基于Epoll的IO协程调度器
-    class IOManager : public Scheduler {
+    class IOManager : public Scheduler, public TimerManager {
     public:
         typedef std::shared_ptr<IOManager> ptr;
         typedef RWMutex RWMutexType;
@@ -128,7 +129,7 @@ namespace sylar {
         void tickle() override; // 触发
         bool stopping() override;   // 是否应该终止
         void idle() override;   // 
-        // void onTimerInsertedAtFront() override;
+        void onTimerInsertedAtFront() override;
 
         /**
          * @brief 重置socket句柄上下文的容器大小

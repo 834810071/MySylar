@@ -108,7 +108,7 @@ namespace sylar {
         if(m_rootThread != -1) {    // 当前线程作为一个协程调度线程
             SYLAR_ASSERT(GetThis() == this);
         } else {
-            SYLAR_ASSERT(GetThis() != this);
+            SYLAR_ASSERT(GetThis() != this);    // -1 == 任意线程
         }
 
         m_stopping = true;

@@ -135,10 +135,6 @@ namespace sylar{
         SetThis(this);
         SYLAR_ASSERT(m_state != EXEC);
         m_state = EXEC;
-//        if (Scheduler::GetMainFiber()->m_ctx.uc_flags == m_ctx.uc_flags)
-//        {
-//            std::cout<< "swapIn true" << std::endl;
-//        }
         // 函数保存当前的上下文到oucp所指向的数据结构，并且设置到ucp所指向的上下文
         // 执行绑定的函数 MainFunc
         if (swapcontext(&Scheduler::GetMainFiber()->m_ctx, &m_ctx)) {
@@ -160,10 +156,6 @@ namespace sylar{
     void Fiber::call() {
         SetThis(this);
         m_state = EXEC;
-        if (t_threadFiber->m_ctx.uc_flags == m_ctx.uc_flags)
-        {
-            std::cout<< "call true" << std::endl;
-        }
         if (swapcontext(&t_threadFiber->m_ctx, &m_ctx)) {
             SYLAR_ASSERT2(false, "swapcontext");
         }

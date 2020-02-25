@@ -26,7 +26,9 @@ set(LIB_SRC
         iomanager.cpp
         iomanager.h
         timer.cpp
-        timer.h)
+        timer.h
+        hook.cpp
+        hook.h)
 
 
 add_library(sylar ${LIB_SRC})
